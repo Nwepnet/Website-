@@ -76,7 +76,7 @@ local function handleSkill1(humanoid)
     }
 
     -- Play the animations for 0.80 seconds before stopping
-    playAnimationSequence(humanoid, animations, 1.10, "move1")
+    playAnimationSequence(humanoid, animations, 1, "move1")
 end
 
 -- Skill 2: Dismantling Grasp
