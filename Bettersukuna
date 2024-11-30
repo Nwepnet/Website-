@@ -14,7 +14,7 @@ local function updateMoveNames()
     skillOne.Text = "Heian Strikes"      -- Move 1 name
     skillTwo.Text = "Dismantling Grasp" -- Move 2 name
     skillThree.Text = "Kokusen"         -- Move 3 name
-    ultTitle.Text = "Power Of Foolishness" -- Ultimate name
+    ultTitle.Text = "Kamutoke." -- Ultimate name
 end
 
 -- Shared Configurable Parameters
