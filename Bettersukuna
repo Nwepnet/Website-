@@ -83,8 +83,7 @@ end
 local function handleSkill2(humanoid)
     local animations = {
         forceGrab = ReplicatedStorage.Animations.Mahito.ForceGrab,
-        slaughterDemon = ReplicatedStorage.Animations.Itadori.SlaughterDemon
-    }
+        slaughterDemon = ReplicatedStorage.Animations.Gojo.Teleport
 
     -- Play the animations for 1 second before stopping
     playAnimationSequence(humanoid, animations, 1.0, "move2")
