@@ -1,0 +1,201 @@
+-- Local player and services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+
+-- GUI Elements
+local skillOne = player.PlayerGui.Main.Moveset['Cursed Strikes'].ItemName
+local skillTwo = player.PlayerGui.Main.Moveset['Crushing Blow'].ItemName
+local skillThree = player.PlayerGui.Main.Moveset['Divergent Fist'].ItemName
+local ultTitle = player.PlayerGui.Main.Ultimate.Title
+
+-- Update GUI
+skillOne.Text = "Heian Strikes"  -- Updated name for Move 1
+skillTwo.Text = "Dismantling Grasp"  -- Updated name for Move 2
+skillThree.Text = "Kokusen"  -- Updated name for Move 3
+ultTitle.Text = "Power Of Foolishness"
+
+-- Shared Configurable Parameters
+local SWAP_DELAY = 0.01
+local PLAY_DURATION = 1.2
+local isAnimationSequenceActive = false
+local isIdleAnimationPlaying = false
+
+-- Helper function to play the animation sequence
+local function playAnimationSequence(player, animationsToPlay, playDuration)
+    if isAnimationSequenceActive then return end
+    isAnimationSequenceActive = true
+
+    local character = player.Character
+    if not character then return end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    local animTracks = {}
+    local isAnimationPlaying = {}
+
+    -- Create animation tracks
+    for name, animation in pairs(animationsToPlay) do
+        local animInstance = Instance.new("Animation")
+        animInstance.AnimationId = animation.AnimationId
+        animTracks[name] = humanoid:LoadAnimation(animInstance)
+        isAnimationPlaying[name] = false
+    end
+
+    -- Stop all current animations immediately (prevents overlapping)
+    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+        track:Stop()
+    end
+
+    -- Flag to track if all animations are completed
+    local allAnimationsCompleted = false
+
+    -- Play animations sequentially and ensure they stop immediately after each one
+    task.spawn(function()
+        for name, animTrack in pairs(animTracks) do
+            -- Play animation only if it's not already playing
+            if not isAnimationPlaying[name] then
+                animTrack:Play()
+                task.wait(playDuration * 0.75)  -- Speed up the wait time to 75% of total play duration
+                animTrack:Stop()  -- Stop the animation immediately after it plays
+                isAnimationPlaying[name] = true
+            end
+        end
+
+        -- After all animations are played, stop all of them and reset the flag
+        allAnimationsCompleted = true
+
+        -- Stop all animations after the sequence
+        for _, track in pairs(animTracks) do
+            track:Stop()  -- Ensure no animations are left running
+        end
+
+        -- Reset the flag to allow the next sequence to run
+        isAnimationSequenceActive = false
+    end)
+end
+
+-- Skill Handlers
+
+-- Skill 1: Heian Strikes
+local function handleSkill1(player)
+    local animations = {
+        wideStrike1 = ReplicatedStorage.Animations.Mahito.WideStrike,
+        wideStrike2 = ReplicatedStorage.Animations.Mahito.WideStrike,
+        slicingExorcism1 = ReplicatedStorage.Animations.Choso.SlicingExorcism,
+        slicingExorcism2 = ReplicatedStorage.Animations.Choso.SlicingExorcism
+    }
+    playAnimationSequence(player, animations, PLAY_DURATION)
+end
+
+-- Skill 2: Dismantling Grasp
+local function handleSkill2(player)
+    local animations = {
+        forceGrab = ReplicatedStorage.Animations.Mahito.ForceGrab,
+        slaughterDemon = ReplicatedStorage.Animations.Itadori.SlaughterDemon
+    }
+    playAnimationSequence(player, animations, 0.8)
+end
+
+-- Skill 3: Kokusen (now using Hakari.RoughEnergy)
+local function handleSkill3(player)
+    local animations = {
+        roughEnergy = ReplicatedStorage.Animations.Hakari.RoughEnergy
+    }
+    playAnimationSequence(player, animations, 1)
+end
+
+-- Play idle animation (Itadori.Ultimate) and freeze other animations
+local function playIdleAnimation(humanoid)
+    -- If the idle animation is already playing, do nothing
+    if isIdleAnimationPlaying then return end
+
+    -- Set the flag to true (animation is now playing)
+    isIdleAnimationPlaying = true
+
+    -- Play the idle animation (Itadori.Ultimate)
+    local idleAnim = Instance.new("Animation")
+    idleAnim.AnimationId = ReplicatedStorage.Animations.Itadori.Ultimate.AnimationId
+    local idleAnimTrack = humanoid:LoadAnimation(idleAnim)
+    idleAnimTrack:Play()
+
+    -- Stop all other animations immediately to "freeze" them
+    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+        track:Stop()
+    end
+
+    -- Let the idle animation play indefinitely (or until you manually stop it)
+    idleAnimTrack.Looped = true
+
+    -- Ensure to stop the idle animation when the character respawns or leaves the idle state
+    humanoid.Died:Connect(function()
+        idleAnimTrack:Stop()
+        isIdleAnimationPlaying = false
+    end)
+end
+
+-- Function to detect if the character is moving or not
+local function checkForMovement(humanoid)
+    humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        if humanoid.WalkSpeed == 0 then
+            -- If the character's speed is 0, play idle animation
+            if not isIdleAnimationPlaying then
+                playIdleAnimation(humanoid)
+            end
+        else
+            -- If the character starts moving, stop the idle animation
+            if isIdleAnimationPlaying then
+                for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                    track:Stop()
+                end
+                isIdleAnimationPlaying = false
+            end
+        end
+    end)
+end
+
+-- Connect Animation Events
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Play idle animation when respawned
+player.CharacterAdded:Connect(function(character)
+    humanoid = character:WaitForChild("Humanoid")
+    checkForMovement(humanoid)  -- Start checking for movement when the character respawns
+end)
+
+-- Stop idle animation if skill animations are triggered
+humanoid.AnimationPlayed:Connect(function(animationTrack)
+    -- If any skill animation plays, stop the idle animation
+    if isIdleAnimationPlaying then
+        for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+            track:Stop()
+        end
+        isIdleAnimationPlaying = false
+    end
+
+    if animationTrack.Animation.AnimationId == ReplicatedStorage.Animations.Itadori.CursedStrike.AnimationId then
+        handleSkill1(player)
+    elseif animationTrack.Animation.AnimationId == ReplicatedStorage.Animations.Itadori.CrushingBlow.AnimationId then
+        handleSkill2(player)
+    elseif animationTrack.Animation.AnimationId == ReplicatedStorage.Animations.Itadori.Variants.DivergentFist1.AnimationId then
+        handleSkill3(player)
+    end
+end)
+
+-- Play Hakari.Rhythm animation on respawn
+player.CharacterAdded:Connect(function(character)
+    local humanoid = character:WaitForChild("Humanoid")
+
+    -- Wait for the character's humanoid to load, then play the Hakari.Rhythm animation
+    local hakariRhythmAnim = Instance.new("Animation")
+    hakariRhythmAnim.AnimationId = "rbxassetid://<AnimationID>"  -- Replace <AnimationID> with the actual ID of Hakari.Rhythm
+    local animTrack = humanoid:LoadAnimation(hakariRhythmAnim)
+
+    animTrack:Play()
+
+    -- Ensure the animation stops after a certain time (or you can choose to stop it when needed)
+    task.wait(2)  -- Play the rhythm for 2 seconds (adjust time as necessary)
+    animTrack:Stop()
+end)
